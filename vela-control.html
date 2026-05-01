@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Vela Control</title>
+<meta name="theme-color" content="#0A0E1A" />
+
+<!-- Vela CI: 다크 + 시안 'l' 액센트 -->
+<style>
+  /* === Reset === */
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea { font-family: inherit; }
+
+  /* === Vela 컬러 토큰 === */
+  :root {
+    --bg: #0A0E1A;
+    --bg-deeper: #060912;
+    --bg-card: #131826;
+    --bg-card-soft: #1A2030;
+    --cyan: #5EEAD4;
+    --cyan-dim: #2DB5A0;
+    --fg: #FFFFFF;
+    --gray-100: #E2E8F0;
+    --gray-300: #94A3B8;
+    --gray-500: #64748B;
+    --gray-700: #334155;
+    --red: #EF4444;
+    --amber: #F59E0B;
+    --green: #10B981;
+    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+    --serif: Georgia, 'Times New Roman', serif;
+  }
+
+  /* === 레이아웃 === */
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 16px 80px;
+  }
+
+  /* === 마스트헤드 === */
+  .masthead {
+    padding: 12px 4px 24px;
+    border-bottom: 1px solid var(--gray-700);
+    margin-bottom: 24px;
+  }
+  .masthead-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .logo {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .logo .l-accent { color: var(--cyan); position: relative; }
+  .logo .l-accent::after {
+    content: '';
+    position: absolute;
+    top: 0.05em;
+    right: 0.18em;
+    width: 0.18em;
+    height: 0.18em;
+    background: var(--cyan);
+    border-radius: 50%;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--gray-500);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-300);
+    padding: 4px 10px;
+    border: 1px solid var(--gray-700);
+    border-radius: 12px;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gray-500);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .status-dot.busy { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  .masthead-meta {
+    margin-top: 16px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+  }
+  .masthead-meta b { color: var(--gray-100); font-weight: 500; }
+
+  /* === 섹션 헤더 === */
+  .section {
+    margin-bottom: 28px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* === 입력 폼 === */
+  .chat-form {
+    background: var(--bg-card);
+    border: 1px solid var(--gray-700);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .chat-form:focus-within { border-color: var(--cyan); }
+
+  .chat-input {
+    width: 100%;
+    background: transparent;
+    color: var(--fg);
+    border: none;
+    outline: none;
+    padding: 14px 16px;
+    font-size: 15px;
+    resize: none;
+    min-height: 80px;
+    line-height: 1.6;
+  }
+  .chat-input::placeholder { color: var(--gray-500); }
+
+  .chat-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-top: 1px solid var(--gray-700);
+    background: var(--bg-card-soft);
+  }
+  .chat-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+  }
+  .send-btn {
+    background: var(--cyan);
+    color: var(--bg);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.04em;
+  }
+  .send-btn:hover:not(:disabled) { opacity: 0.85; }
+  .send-btn:active:not(:disabled) { transform: translateY(1px); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* === 결과 카드 === */
+  .result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gray-700);
+    border-radius: 8px;
+    padding: 18px;
+    margin-top: 12px;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.3s ease-out;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--cyan);
+  }
+  .result-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+  .result-row:last-child { margin-bottom: 0; }
+  .result-key {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    min-width: 80px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+  .result-val { color: var(--gray-100); font-size: 14px; flex: 1; }
+  .intent-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  .intent-SCHEDULE { background: rgba(94, 234, 212, 0.15); color: var(--cyan); }
+  .intent-FACT     { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+  .intent-QUESTION { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+  .intent-IGNORE   { background: rgba(100, 116, 139, 0.2); color: var(--gray-300); }
+
+  .conf-bar {
+    display: inline-block;
+    width: 80px;
+    height: 4px;
+    background: var(--gray-700);
+    border-radius: 2px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .conf-fill {
+    display: block;
+    height: 100%;
+    background: var(--cyan);
+    transition: width 0.4s ease-out;
+  }
+  .conf-fill.med { background: var(--amber); }
+  .conf-fill.low { background: var(--red); }
+
+  .delegate-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg-deeper);
+    border: 1px solid var(--gray-700);
+    color: var(--cyan);
+  }
+
+  /* === Voice 등록 카드 === */
+  .voice-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gray-700);
+    border-radius: 8px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .voice-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--bg-deeper);
+    border: 1px solid var(--cyan);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: var(--cyan);
+  }
+  .voice-icon svg { width: 22px; height: 22px; }
+  .voice-text { flex: 1; min-width: 0; }
+  .voice-text-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .voice-text-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-500);
+  }
+  .voice-btn {
+    border: 1px solid var(--gray-700);
+    color: var(--gray-100);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: var(--mono);
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  .voice-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .voice-btn.recording {
+    border-color: var(--red);
+    color: var(--red);
+    animation: pulse 1.2s infinite;
+  }
+  .voice-progress {
+    display: none;
+    flex: 1;
+    height: 4px;
+    background: var(--gray-700);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 8px;
+  }
+  .voice-progress.active { display: block; }
+  .voice-progress-fill {
+    height: 100%;
+    background: var(--cyan);
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* === 활동 로그 === */
+  .log {
+    list-style: none;
+    background: var(--bg-card);
+    border: 1px solid var(--gray-700);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .log-empty {
+    padding: 28px 18px;
+    text-align: center;
+    color: var(--gray-500);
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+  .log-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-700);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    animation: cardIn 0.3s ease-out;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+    flex-shrink: 0;
+    padding-top: 4px;
+    min-width: 38px;
+  }
+  .log-body { flex: 1; min-width: 0; }
+  .log-row1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+  }
+  .log-msg {
+    color: var(--gray-100);
+    font-size: 13px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .log-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+  }
+  .log-clear-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-card-soft);
+    border-top: 1px solid var(--gray-700);
+    color: var(--gray-500);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .log-clear-btn:hover { color: var(--red); }
+
+  /* === 토스트 === */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-deeper);
+    border: 1px solid var(--gray-700);
+    color: var(--fg);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 100;
+    max-width: 90vw;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok  { border-color: var(--cyan); color: var(--cyan); }
+
+  /* === 설정 시트 === */
+  .settings-btn {
+    color: var(--gray-500);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    transition: color 0.2s;
+  }
+  .settings-btn:hover { color: var(--cyan); }
+  .settings {
+    display: none;
+    background: var(--bg-card);
+    border: 1px solid var(--gray-700);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .settings.open { display: block; }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .settings-row:last-child { margin-bottom: 0; }
+  .settings-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray-300);
+    min-width: 80px;
+  }
+  .settings-input {
+    flex: 1;
+    background: var(--bg-deeper);
+    border: 1px solid var(--gray-700);
+    color: var(--fg);
+    padding: 7px 10px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+  }
+  .settings-input:focus { border-color: var(--cyan); }
+
+  /* === 푸터 === */
+  .footer {
+    padding-top: 28px;
+    margin-top: 32px;
+    border-top: 1px solid var(--gray-700);
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--gray-500);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- 마스트헤드 -->
+  <header class="masthead">
+    <div class="masthead-row">
+      <h1 class="logo">Ve<span class="l-accent">l</span>a</h1>
+      <span class="status-pill">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusText">checking…</span>
+      </span>
+    </div>
+    <div class="masthead-meta">
+      <span>CONTROL <b>v0.2.0</b></span>
+      <span>PHASE <b>1.2</b></span>
+      <span>BRAIN <b>groq:llama-3.1-8b-instant</b></span>
+    </div>
+  </header>
+
+  <!-- 입력 -->
+  <section class="section">
+    <div class="section-label">INPUT</div>
+    <form id="chatForm" class="chat-form">
+      <textarea
+        id="chatInput"
+        class="chat-input"
+        placeholder="아무거나 입력. 일정·메모·질문이 자동 분류됨."
+        rows="3"
+        maxlength="2000"
+      ></textarea>
+      <div class="chat-toolbar">
+        <span class="chat-hint">⌘/Ctrl + Enter 전송</span>
+        <button id="sendBtn" type="submit" class="send-btn">전송</button>
+      </div>
+    </form>
+    <div id="latestResult"></div>
+  </section>
+
+  <!-- Voice 등록 -->
+  <section class="section">
+    <div class="section-label">VOICE IDENTITY</div>
+    <div class="voice-card">
+      <div class="voice-icon">
+        <!-- 마이크 아이콘 -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </div>
+      <div class="voice-text">
+        <div class="voice-text-title" id="voiceTitle">음성 미등록</div>
+        <div class="voice-text-sub" id="voiceSub">30초 녹음 → 화자 인증 + 음성 합성에 사용</div>
+      </div>
+      <div class="voice-progress" id="voiceProgress">
+        <div class="voice-progress-fill" id="voiceProgressFill"></div>
+      </div>
+      <button id="voiceBtn" class="voice-btn">녹음 시작</button>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section class="section">
+    <button id="settingsToggle" class="settings-btn">▸ SETTINGS</button>
+    <div id="settings" class="settings">
+      <div class="settings-row">
+        <label class="settings-label" for="endpointInput">ENDPOINT</label>
+        <input
+          id="endpointInput"
+          class="settings-input"
+          type="text"
+          placeholder="http://100.x.x.x:8000"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="settings-row" style="font-size: 10px; color: var(--gray-500); font-family: var(--mono);">
+        Tailscale 사설 IP 형식. http://localhost:8000 도 가능.
+      </div>
+    </div>
+  </section>
+
+  <!-- 활동 로그 -->
+  <section class="section">
+    <div class="section-label">ACTIVITY LOG</div>
+    <ul id="logList" class="log">
+      <li class="log-empty">아직 활동 없음</li>
+    </ul>
+  </section>
+
+  <footer class="footer">MADE BY JUNS · vela-control v0.2.0</footer>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // === 설정 ===
+  const LS_KEY = 'vela.endpoint';
+  const LS_LOG = 'vela.log';
+  const LS_VOICE = 'vela.voice.enrolled';
+  const MAX_LOG_ITEMS = 50;
+  const HEALTH_INTERVAL = 15000;
+
+  const $ = (id) => document.getElementById(id);
+
+  // === 상태 ===
+  let endpoint = localStorage.getItem(LS_KEY) || 'http://localhost:8000';
+  let log = loadLog();
+  let voiceEnrolled = localStorage.getItem(LS_VOICE) === 'true';
+  let recording = false;
+  let mediaRecorder = null;
+  let recordTimer = null;
+
+  // === DOM ===
+  const els = {
+    statusDot: $('statusDot'),
+    statusText: $('statusText'),
+    chatForm: $('chatForm'),
+    chatInput: $('chatInput'),
+    sendBtn: $('sendBtn'),
+    latestResult: $('latestResult'),
+    voiceBtn: $('voiceBtn'),
+    voiceTitle: $('voiceTitle'),
+    voiceSub: $('voiceSub'),
+    voiceProgress: $('voiceProgress'),
+    voiceProgressFill: $('voiceProgressFill'),
+    settingsToggle: $('settingsToggle'),
+    settings: $('settings'),
+    endpointInput: $('endpointInput'),
+    logList: $('logList'),
+    toast: $('toast'),
+  };
+
+  // === 유틸 ===
+  function loadLog() {
+    try {
+      const raw = localStorage.getItem(LS_LOG);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+  function saveLog() {
+    try {
+      localStorage.setItem(LS_LOG, JSON.stringify(log.slice(0, MAX_LOG_ITEMS)));
+    } catch {}
+  }
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+  function showToast(msg, type = '') {
+    els.toast.textContent = msg;
+    els.toast.className = 'toast show ' + type;
+    setTimeout(() => { els.toast.className = 'toast ' + type; }, 2400);
+  }
+
+  // === 상태 인디케이터 ===
+  function setStatus(state, label) {
+    els.statusDot.className = 'status-dot ' + state;
+    els.statusText.textContent = label;
+  }
+
+  async function checkHealth() {
+    try {
+      const r = await fetch(endpoint + '/health', { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const data = await r.json();
+      setStatus('ok', `online · v${data.version}`);
+    } catch (e) {
+      setStatus('err', 'offline');
+    }
+  }
+
+  // === 채팅 전송 ===
+  async function sendMessage(message) {
+    if (!message.trim()) return;
+    setStatus('busy', 'thinking…');
+    els.sendBtn.disabled = true;
+
+    try {
+      const r = await fetch(endpoint + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      if (!r.ok) {
+        let detail = '';
+        try { detail = (await r.json()).detail || ''; } catch {}
+        throw new Error(`${r.status} ${detail || r.statusText}`);
+      }
+
+      const data = await r.json();
+      renderLatest(message, data);
+      pushLog({
+        ts: Date.now(),
+        message,
+        intent: data.intent,
+        confidence: data.confidence,
+        summary: data.summary,
+        delegate_to: data.delegate_to,
+      });
+      els.chatInput.value = '';
+      setStatus('ok', 'online');
+    } catch (e) {
+      showToast('전송 실패: ' + e.message, 'err');
+      setStatus('err', 'error');
+      // 헬스체크로 복구 시도
+      setTimeout(checkHealth, 1500);
+    } finally {
+      els.sendBtn.disabled = false;
+    }
+  }
+
+  function renderLatest(message, data) {
+    const conf = data.confidence;
+    const confPct = Math.round(conf * 100);
+    const confClass = conf >= 0.8 ? '' : conf >= 0.6 ? 'med' : 'low';
+
+    const delegateHTML = data.delegate_to
+      ? `<span class="delegate-tag">→ ${escapeHTML(data.delegate_to)}</span>`
+      : `<span style="color: var(--gray-500); font-family: var(--mono); font-size: 11px;">없음</span>`;
+
+    els.latestResult.innerHTML = `
+      <div class="result-card">
+        <div class="result-row">
+          <span class="result-key">INTENT</span>
+          <span class="result-val">
+            <span class="intent-badge intent-${escapeHTML(data.intent)}">${escapeHTML(data.intent)}</span>
+          </span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">CONFIDENCE</span>
+          <span class="result-val">
+            <span class="conf-bar"><span class="conf-fill ${confClass}" style="width: ${confPct}%"></span></span>
+            <span style="font-family: var(--mono); font-size: 12px;">${conf.toFixed(2)}</span>
+          </span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">SUMMARY</span>
+          <span class="result-val">${escapeHTML(data.summary || '—')}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">DELEGATE</span>
+          <span class="result-val">${delegateHTML}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">REASONING</span>
+          <span class="result-val" style="color: var(--gray-300); font-size: 13px;">${escapeHTML(data.reasoning || '')}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-key">NEXT</span>
+          <span class="result-val" style="color: var(--cyan-dim); font-size: 12px; font-family: var(--mono);">${escapeHTML(data.next_action || '')}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHTML(s) {
+    if (s == null) return '';
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  // === 로그 ===
+  function pushLog(entry) {
+    log.unshift(entry);
+    if (log.length > MAX_LOG_ITEMS) log = log.slice(0, MAX_LOG_ITEMS);
+    saveLog();
+    renderLog();
+  }
+
+  function renderLog() {
+    if (log.length === 0) {
+      els.logList.innerHTML = '<li class="log-empty">아직 활동 없음</li>';
+      return;
+    }
+
+    const items = log.map(e => {
+      const conf = e.confidence != null ? e.confidence.toFixed(2) : '—';
+      const delegate = e.delegate_to ? ` → ${escapeHTML(e.delegate_to)}` : '';
+      return `
+        <li class="log-item">
+          <span class="log-time">${fmtTime(e.ts)}</span>
+          <div class="log-body">
+            <div class="log-row1">
+              <span class="intent-badge intent-${escapeHTML(e.intent)}" style="font-size: 9px; padding: 2px 6px;">${escapeHTML(e.intent)}</span>
+              <span class="log-meta">${conf}${delegate}</span>
+            </div>
+            <div class="log-msg">${escapeHTML(e.message.length > 120 ? e.message.slice(0, 120) + '…' : e.message)}</div>
+          </div>
+        </li>
+      `;
+    }).join('');
+
+    els.logList.innerHTML = items + `
+      <button id="logClearBtn" class="log-clear-btn">CLEAR LOG</button>
+    `;
+    $('logClearBtn').addEventListener('click', () => {
+      if (!confirm('로그를 모두 삭제할까?')) return;
+      log = [];
+      saveLog();
+      renderLog();
+    });
+  }
+
+  // === Voice 등록 ===
+  function updateVoiceUI() {
+    if (recording) {
+      els.voiceBtn.textContent = '중지';
+      els.voiceBtn.classList.add('recording');
+      els.voiceTitle.textContent = '녹음 중…';
+      els.voiceSub.textContent = '30초 동안 다양한 톤으로 말해줘';
+      els.voiceProgress.classList.add('active');
+    } else if (voiceEnrolled) {
+      els.voiceBtn.textContent = '재등록';
+      els.voiceBtn.classList.remove('recording');
+      els.voiceTitle.textContent = '음성 등록 완료';
+      els.voiceSub.textContent = 'Resemblyzer + OpenVoice v2 reference로 사용';
+      els.voiceProgress.classList.remove('active');
+    } else {
+      els.voiceBtn.textContent = '녹음 시작';
+      els.voiceBtn.classList.remove('recording');
+      els.voiceTitle.textContent = '음성 미등록';
+      els.voiceSub.textContent = '30초 녹음 → 화자 인증 + 음성 합성에 사용';
+      els.voiceProgress.classList.remove('active');
+    }
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast('이 브라우저는 마이크 접근 미지원', 'err');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.addEventListener('dataavailable', (ev) => {
+        if (ev.data.size > 0) chunks.push(ev.data);
+      });
+
+      mediaRecorder.addEventListener('stop', async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+
+        // Phase 1.2 — 일단 로컬에만 보관 (Phase 3에서 백엔드 업로드 추가)
+        // TODO: POST blob to /voice/enroll endpoint
+        await uploadVoice(blob);
+      });
+
+      mediaRecorder.start();
+      recording = true;
+      updateVoiceUI();
+
+      // 30초 카운트다운
+      const startTime = Date.now();
+      const duration = 30000;
+      recordTimer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const pct = Math.min((elapsed / duration) * 100, 100);
+        els.voiceProgressFill.style.width = pct + '%';
+        if (elapsed >= duration) stopRecording();
+      }, 100);
+
+    } catch (e) {
+      showToast('마이크 권한 거부됨: ' + e.message, 'err');
+    }
+  }
+
+  function stopRecording() {
+    if (recordTimer) { clearInterval(recordTimer); recordTimer = null; }
+    if (mediaRecorder?.state === 'recording') mediaRecorder.stop();
+    recording = false;
+    els.voiceProgressFill.style.width = '0%';
+    updateVoiceUI();
+  }
+
+  async function uploadVoice(blob) {
+    // Phase 1.2: 백엔드에 /voice/enroll 엔드포인트 미구현.
+    // 일단 로컬에 등록 표시만 하고, Phase 3 음성 인프라 도입 시 실제 업로드.
+    // 향후: POST multipart/form-data → /voice/enroll → 임베딩 + reference 저장
+    console.info('[voice] blob ready:', blob.size, 'bytes — Phase 3에서 백엔드 업로드 예정');
+    voiceEnrolled = true;
+    localStorage.setItem(LS_VOICE, 'true');
+    updateVoiceUI();
+    showToast('음성 등록 완료 (로컬). Phase 3에서 백엔드 연동.', 'ok');
+  }
+
+  // === 이벤트 ===
+  els.chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendMessage(els.chatInput.value);
+  });
+
+  els.chatInput.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage(els.chatInput.value);
+    }
+  });
+
+  els.voiceBtn.addEventListener('click', () => {
+    if (recording) stopRecording();
+    else startRecording();
+  });
+
+  els.settingsToggle.addEventListener('click', () => {
+    els.settings.classList.toggle('open');
+    els.settingsToggle.textContent = els.settings.classList.contains('open')
+      ? '▾ SETTINGS' : '▸ SETTINGS';
+  });
+
+  els.endpointInput.addEventListener('change', () => {
+    const v = els.endpointInput.value.trim().replace(/\/$/, '');
+    if (!v) return;
+    endpoint = v;
+    localStorage.setItem(LS_KEY, endpoint);
+    showToast('엔드포인트 저장. 헬스체크 중…', 'ok');
+    checkHealth();
+  });
+
+  // === 초기화 ===
+  els.endpointInput.value = endpoint;
+  renderLog();
+  updateVoiceUI();
+  checkHealth();
+  setInterval(checkHealth, HEALTH_INTERVAL);
+
+})();
+</script>
+</body>
+</html>
